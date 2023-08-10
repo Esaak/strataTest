@@ -2,10 +2,10 @@
 #define CHARTVIEW_H
 
 #include <QtCharts/QChartView>
+#include<QFuture>
 
 QT_BEGIN_NAMESPACE
 class QScatterSeries;
-class QToolButton;
 QT_END_NAMESPACE
 
 class Button;
@@ -20,11 +20,13 @@ public:
     explicit ChartView(QWidget *parent = 0);
 
 private:
-    QTimer *timer;
     QSize buttonSize = {70,70};
-
+    QFuture<void> thread;
     QChart *chart;
     QScatterSeries *series;
+    Button *startButton;
+    Button *pauseButton;
+    Button *stopButton;
 
     Button *createButton(const std::string &iconPath, const QSize &buttonSize, const char *member);
 private slots:

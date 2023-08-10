@@ -8,15 +8,18 @@
 #include<QGraphicsLayout>
 #include <QIcon>
 #include <QGridLayout>
+#include <QtConcurrent/QtConcurrent>
+#include <QThread>
+#include<QDebug>
 
 ChartView::ChartView(QWidget *parent):
     QChartView(new QChart(), parent)
 {
 
     chart = new QChart;
-    Button *startButton = createButton(std::string{"icon_btn/play-button.png"}, buttonSize, SLOT(startButtonClicked()));
-    Button *pauseButton = createButton("icon_btn/pause-button.png", buttonSize, SLOT(pauseButtonClicked()));
-    Button *stopButton = createButton("icon_btn/stop-button.png", buttonSize, SLOT(stopButtonClicked()));
+    startButton = createButton(std::string{"icon_btn/play-button.png"}, buttonSize, SLOT(startButtonClicked()));
+    pauseButton = createButton("icon_btn/pause-button.png", buttonSize, SLOT(pauseButtonClicked()));
+    stopButton = createButton("icon_btn/stop-button.png", buttonSize, SLOT(stopButtonClicked()));
 
 
     series = new QScatterSeries();
@@ -25,16 +28,6 @@ ChartView::ChartView(QWidget *parent):
     series->setName("scatter");
     series->setMarkerShape(QScatterSeries::MarkerShapeCircle);
     series->setMarkerSize(10.0);
-
-    timer = new QTimer();
-
-
-connect(timer, &QTimer::timeout, this, [this]()
-{
-    series->append(QRandomGenerator::global()->bounded(1.), QRandomGenerator::global()->bounded(1.));
-});
-
-
 
 
 
@@ -75,18 +68,34 @@ Button *ChartView::createButton(const std::string &iconPath, const QSize &button
 
 void ChartView::startButtonClicked()
 {
-    timer->start(1000);
+    thread = QtConcurrent::run(
+                [this](QPromise<int> &promise) -> void
+                {
+                    while(true){
+                        promise.suspendIfRequested();
+                        if (promise.isCanceled())
+                            return;
+                        series->append(QRandomGenerator::global()->bounded(1.), QRandomGenerator::global()->bounded(1.));
+                        QThread::currentThread()->msleep(1000);
+
+                    }
+                }
+
+                );
+    startButton->setEnabled(false);
 }
 
 void ChartView::pauseButtonClicked()
 {
-    timer->stop();
+    thread.suspend();
+    startButton->setEnabled(true);
 }
 
 void ChartView::stopButtonClicked()
 {
-    timer->stop();
+    thread.cancel();
     series->clear();
+    startButton->setEnabled(true);
 }
 
 
